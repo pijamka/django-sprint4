@@ -2,12 +2,10 @@ from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm
 from django.views.generic.edit import CreateView
 from django.urls import path, include, reverse_lazy
+from django.conf import settings
 
 urlpatterns = [
     path('auth/', include('django.contrib.auth.urls')),
-    path('pages/', include('pages.urls', namespace='pages')),
-    path('admin/', admin.site.urls),
-    path('', include('blog.urls', namespace='blog')),
     path(
         'auth/registration/',
         CreateView.as_view(
@@ -17,6 +15,15 @@ urlpatterns = [
         ),
         name='registration',
     ),
+    path('pages/', include('pages.urls', namespace='pages')),
+    path('admin/', admin.site.urls),
+    path('', include('blog.urls', namespace='blog')),
 ]
 
 handler404 = 'pages.views.page_not_found'
+handler500 = 'pages.views.server_error'
+
+if settings.DEBUG:
+    import debug_toolbar
+    # Добавить к списку urlpatterns список адресов из приложения debug_toolbar:
+    urlpatterns += (path('__debug__/', include(debug_toolbar.urls)),)

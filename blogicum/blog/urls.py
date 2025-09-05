@@ -7,14 +7,14 @@ app_name = 'blog'
 urlpatterns = [
     path(
         'profile/<str:username>/',
-        views.UserProfileListView.as_view(),
+        views.UserProfileDetailView.as_view(),
         name='profile'
     ),
     path(
-        'profile/edit_profile/',
-        views.edit_profile,
+        'edit_profile/',
+        views.UserEditProfileUpdateView.as_view(),
         name='edit_profile'
-    ),    
+    ),
     path(
         'posts/create/',
         views.CreatePostCreateView.as_view(),
@@ -42,7 +42,7 @@ urlpatterns = [
         ),
     path(
         'category/<slug:category_slug>/',
-        views.category_posts, name='category_posts'
+        views.CategoryPostsListView.as_view(), name='category_posts'
     ),
     path('', views.IndexListView.as_view(), name='index'),
 ]

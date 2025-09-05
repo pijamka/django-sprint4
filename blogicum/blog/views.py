@@ -1,20 +1,27 @@
 from datetime import datetime
 from django.contrib.auth.models import User
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
-from django.views.generic import CreateView, DetailView, DeleteView, ListView, UpdateView
-from django.shortcuts import get_object_or_404, render, redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views.generic import (
+    CreateView,
+    DetailView,
+    DeleteView,
+    ListView,
+    UpdateView
+)
 
-from .forms import CommentForm
+from .forms import CommentForm, PubDateForm
 
 from blog.models import Post, Category
 
 
-class IndexListView(ListView):
-    model = Post
-    ordering = 'id'
-    paginate_by = 10
-    template_name = 'blog/index.html'
+class OnlyAuthorMixin(UserPassesTestMixin):
+
+    def test_func(self):
+        object = self.get_object()
+        return object.author == self.request.user
 
 
 def filter_posts(posts):
@@ -29,27 +36,16 @@ def filter_posts(posts):
     )
 
 
-
-
-
-def post_detail(request, post_id):
-    return render(
-        request,
-        'blog/detail.html',
-        {
-            'post': get_object_or_404(
-                filter_posts(
-                    Post.objects
-                ),
-                pk=post_id
-            )
-        }
-    )
+class IndexListView(ListView):
+    model = Post
+    ordering = 'id'
+    paginate_by = 10
+    template_name = 'blog/index.html'
 
 
 class CreatePostCreateView(CreateView):
     model = Post
-    fields = '__all__'
+    form_class = PubDateForm
     template_name = 'blog/create.html'
     success_url = reverse_lazy('blog:index')
 
@@ -58,49 +54,79 @@ class CreatePostCreateView(CreateView):
         return super().form_valid(form)
 
 
-def edit_profile(request):
-    return render(request, 'blog/profile.html')
-
-
-class UserProfileListView(ListView):
+class EditPostUpdateView(OnlyAuthorMixin, UpdateView):
     model = Post
-    ordering = 'id'
-    paginate_by = 10
-    template_name = 'blog/profile.html'
+    fields = (
+        'title',
+        'text',
+        'pub_date',
+        'is_published',
+        'category',
+        'location',
+    )
+    template_name = 'blog/create.html'
+    success_url = reverse_lazy('blog:index')
 
-    def get_queryset(self):
-        return Post.objects.filter(author__username=self.kwargs['username'])
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['profile'] = User.objects.get(username=self.kwargs['username'])
-        return context
-
-
-class EditPostUpdateView(UpdateView):
+class DeletePostDeleteView(OnlyAuthorMixin, DeleteView):
     model = Post
     template_name = 'blog/create.html'
+    success_url = reverse_lazy('blog:index')
 
-
-class DeletePostDeleteView(DeleteView):
-    model = Post
-    template_name = 'blog/create.html'
 
 class PostDetailDetailView(DetailView):
     model = Post
-    template_name = 'blog/detail.html' 
+    template_name = 'blog/detail.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Записываем в переменную form пустой объект формы.
         context['form'] = CommentForm()
-        # Запрашиваем все поздравления для выбранного дня рождения.
         context['comment'] = (
-            # Дополнительно подгружаем авторов комментариев,
-            # чтобы избежать множества запросов к БД.
             self.object.comment.select_related('author')
         )
-        return context    
+        return context
+
+
+class CategoryPostsListView(ListView):
+    model = Post
+    ordering = 'id'
+    paginate_by = 10
+    template_name = 'blog/category.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        category = get_object_or_404(
+            Category,
+            slug=self.kwargs['category_slug'],
+            is_published=True,
+        )
+        context['category'] = category
+        context['page_obj'] = filter_posts(category.posts.all())
+        return context
+
+
+class UserProfileDetailView(DetailView):
+    model = User
+    template_name = 'blog/profile.html'
+    context_object_name = 'profile'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_obj'] = Post.objects.filter(author=self.object)
+        return context
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(self.model, username=self.kwargs['username'])
+
+
+class UserEditProfileUpdateView(UpdateView):
+    model = User
+    fields = ('username', 'email', 'first_name', 'last_name')
+    template_name = 'blog/user.html'
+    success_url = reverse_lazy('blog:index')
+
+    def get_object(self):
+        return self.request.user
 
 
 @login_required
@@ -113,58 +139,3 @@ def add_comment(request, pk):
         comment.post = post
         comment.save()
     return redirect('blog:detail', pk=pk)
-
-def category_posts(request, category_slug):
-    category = get_object_or_404(
-        Category,
-        slug=category_slug,
-        is_published=True,
-    )
-    return render(
-        request,
-        'blog/category.html',
-        {
-            'category': category,
-            'page_obj': filter_posts(category.posts.all())
-        }
-    )
-
-
-
-
-
-
-
-
-'''
-def user_profile(request, username):
-    profile = User.objects.get(username=username)
-    posts =  Post.objects.filter(author__username=username)
-    return render(
-        request,
-        'blog/profile.html',
-        {
-            'profile': profile,
-            'page_obj': posts
-        },)
-def index(request):
-    return render(
-        posts = Post.objects.order_by('id')
-        paginator = Paginator(posts, 10)
-        page_number = request.GET.get('page')
-
-        context = {
-            'posts'
-        }
-        request,
-        'blog/index.html',
-        {
-            'posts': filter_posts(
-                Post.objects
-            )[:5]
-        }
-    )
-
-
-
-'''
