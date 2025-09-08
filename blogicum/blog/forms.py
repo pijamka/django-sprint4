@@ -22,3 +22,10 @@ class PubDateForm(forms.ModelForm):
         widgets = {
             'pub_date': forms.DateInput(attrs={'type': 'date'}),
         }
+
+
+class DeleteForm(forms.ModelForm):
+
+    class Meta:
+        model = Post
+        fields = ('__all__')

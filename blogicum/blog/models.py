@@ -95,6 +95,7 @@ class Post(PublishedModel):
         blank=False,
         related_name='posts'
     )
+    image = models.ImageField('Фото', upload_to='posts_images', blank=True)
 
     class Meta:
         verbose_name = 'публикация'
@@ -107,7 +108,7 @@ class Post(PublishedModel):
 
 class Comment(models.Model):
     text = models.TextField('Текст комментария')
-    comment = models.ForeignKey(
+    post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
         related_name='comment',
