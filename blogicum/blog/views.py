@@ -76,6 +76,7 @@ class EditPostUpdateView(OnlyAuthorMixin, UpdateView):
         'is_published',
         'category',
         'location',
+        'image'
     )
     template_name = 'blog/create.html'
 
@@ -171,7 +172,7 @@ def add_comment(request, pk):
     if form.is_valid():
         comment = form.save(commit=False)
         comment.author = request.user
-        comment.comment = post
+        comment.post = post
         comment.save()
     return redirect('blog:post_detail', pk=pk)
 
