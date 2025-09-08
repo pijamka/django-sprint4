@@ -107,7 +107,7 @@ class Post(PublishedModel):
 
 class Comment(models.Model):
     text = models.TextField('Текст комментария')
-    birthday = models.ForeignKey(
+    comment = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
         related_name='comment',

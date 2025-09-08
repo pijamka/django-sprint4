@@ -1,4 +1,4 @@
-from django.urls import include, path
+from django.urls import path
 
 from . import views
 
@@ -39,10 +39,21 @@ urlpatterns = [
         'posts/<int:pk>/comment/',
         views.add_comment,
         name='add_comment'
-        ),
+    ),
     path(
         'category/<slug:category_slug>/',
-        views.CategoryPostsListView.as_view(), name='category_posts'
+        views.CategoryPostsListView.as_view(),
+        name='category_posts'
+    ),
+    path(
+        'posts/<int:post_id>/comments/<int:comment_id>/edit/',
+        views.edit_comment,
+        name='edit_comment'
+    ),
+    path(
+        'posts/<int:post_id>/comments/<int:comment_id>/delete/',
+        views.delete_comment,
+        name='delete_comment'
     ),
     path('', views.IndexListView.as_view(), name='index'),
 ]

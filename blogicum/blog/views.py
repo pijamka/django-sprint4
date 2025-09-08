@@ -2,7 +2,9 @@ from datetime import datetime
 from django.contrib.auth.models import User
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
+from django.core.paginator import Paginator
+from django.db.models import Count
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -12,9 +14,10 @@ from django.views.generic import (
     UpdateView
 )
 
-from .forms import CommentForm, PubDateForm
+from datetime import datetime
 
-from blog.models import Post, Category
+from .forms import CommentForm, PubDateForm
+from blog.models import Post, Category, Comment
 
 
 class OnlyAuthorMixin(UserPassesTestMixin):
@@ -28,16 +31,17 @@ def filter_posts(posts):
     return posts.select_related(
         'author',
         'location',
-        'category'
+        'category',
     ).filter(
         is_published=True,
         category__is_published=True,
         pub_date__lt=datetime.now()
-    )
+    ).annotate(comment_count=Count('comment'))
 
 
 class IndexListView(ListView):
     model = Post
+    queryset = filter_posts(Post.objects)
     ordering = 'id'
     paginate_by = 10
     template_name = 'blog/index.html'
@@ -81,9 +85,7 @@ class PostDetailDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
-        context['comment'] = (
-            self.object.comment.select_related('author')
-        )
+        context['comments'] = self.object.comment.select_related('author')
         return context
 
 
@@ -93,6 +95,11 @@ class CategoryPostsListView(ListView):
     paginate_by = 10
     template_name = 'blog/category.html'
 
+    def get_queryset(self):
+        return filter_posts(Post.objects).filter(
+            category__slug=self.kwargs.get('category_slug'),
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         category = get_object_or_404(
@@ -101,7 +108,6 @@ class CategoryPostsListView(ListView):
             is_published=True,
         )
         context['category'] = category
-        context['page_obj'] = filter_posts(category.posts.all())
         return context
 
 
@@ -112,7 +118,15 @@ class UserProfileDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_obj'] = Post.objects.filter(author=self.object)
+        posts = Post.objects.select_related(
+            'category',
+            'location',
+            'author'
+        ).filter(
+            author__username=self.kwargs['username']
+        ).annotate(comment_count=Count('comment'))
+        paginator = Paginator(posts, 10)
+        context['page_obj'] = paginator.get_page(self.request.GET.get('page'))
         return context
 
     def get_object(self, queryset=None):
@@ -132,10 +146,39 @@ class UserEditProfileUpdateView(UpdateView):
 @login_required
 def add_comment(request, pk):
     post = get_object_or_404(Post, pk=pk)
-    form = CommentForm(request.Post)
+    form = CommentForm(request.POST)
     if form.is_valid():
         comment = form.save(commit=False)
         comment.author = request.user
-        comment.post = post
+        comment.comment = post
         comment.save()
-    return redirect('blog:detail', pk=pk)
+    return redirect('blog:post_detail', pk=pk)
+
+
+@login_required
+def edit_comment(request, post_id, comment_id):
+    comment = get_object_or_404(Comment, pk=comment_id)
+    if request.user != comment.author and not request.user.is_staff:
+        return render(request, 'pages/403.html')
+    if request.method == 'POST':
+        form = CommentForm(request.POST, instance=comment)
+        if form.is_valid():
+            form.save()
+            return redirect(f'/posts/{post_id}/')
+    else:
+        form = CommentForm(instance=comment)
+        return render(
+            request,
+            'blog/comment.html',
+            {'form': form,
+             'comment': comment}
+        )
+
+
+@login_required
+def delete_comment(request, post_id, comment_id):
+    comment = Comment.objects.get(pk=comment_id)
+    if request.user != comment.author and not request.user.is_staff:
+        return render(request, 'pages/403.html')
+    comment.delete()
+    return redirect(f'/posts/{post_id}/')
