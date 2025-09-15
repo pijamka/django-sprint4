@@ -41,19 +41,21 @@ urlpatterns = [
         name='add_comment'
     ),
     path(
-        'category/<slug:category_slug>/',
-        views.CategoryPostsListView.as_view(),
-        name='category_posts'
-    ),
-    path(
-        'posts/<int:post_id>/edit_comment/<int:id>/',
+        'posts/<int:post_id>/comments/<int:id>/',
         views.edit_comment,
         name='edit_comment'
     ),
     path(
-        'posts/<int:post_id>/comment/<int:comment_id>/delete_comment/',
+        'posts/<int:post_id>/comments/<int:comment_id>/delete_comment/',
         views.delete_comment,
         name='delete_comment'
     ),
+
+    path(
+        'category/<slug:category_slug>/',
+        views.CategoryPostsListView.as_view(),
+        name='category_posts'
+    ),
+
     path('', views.IndexListView.as_view(), name='index'),
 ]

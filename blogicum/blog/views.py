@@ -200,9 +200,12 @@ def edit_comment(request, post_id, id):
 @login_required
 def delete_comment(request, post_id, comment_id):
     comment = get_object_or_404(Comment, pk=comment_id)
-    form = CommentForm(instance=comment)
-    context = {'form': form, 'comment': comment}
+    # form = CommentForm(instance=comment)
+    # # context = {'form': form, 'comment': comment}
+    context = {'comment': comment}
     if request.method == 'POST':
+        if request.user != comment.author and not request.user.is_staff:
+            return render(request, 'pages/403.html')
         comment.delete()
         return redirect('blog:post_detail', pk=post_id)
     return render(request, 'blog/comment.html', context)
