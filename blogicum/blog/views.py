@@ -93,6 +93,16 @@ class EditPostUpdateView(OnlyAuthorMixin, UpdateView):
             'blog:post_detail',
             kwargs={'pk': self.kwargs['post_id']}
         )
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            post = self.get_object()
+                # Сгенерируйте URL страницы поста
+            post_url = reverse('blog:post_detail', kwargs={'pk': post.pk})
+                # Перенаправьте пользователя
+            return redirect(post_url)
+        return super().dispatch(request, *args, **kwargs)
+
 
 
 class DeletePostDeleteView(OnlyAuthorMixin, DeleteView):

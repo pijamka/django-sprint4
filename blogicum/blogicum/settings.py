@@ -138,6 +138,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_REDIRECT_URL = 'blog:index'
 
+LOGIN_URL = '/auth/login/'
+
 INTERNAL_IPS = [
     '127.0.0.1',
 ]
