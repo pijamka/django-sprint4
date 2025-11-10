@@ -53,7 +53,15 @@ class IndexListView(ListView):
 
 class CreatePostCreateView(LoginRequiredMixin, CreateView):
     model = Post
-    form_class = PubDateForm
+    fields = (
+        'title',
+        'text',
+        'pub_date',
+        'is_published',
+        'category',
+        'location',
+        'image'
+    )
     template_name = 'blog/create.html'
 
     def form_valid(self, form):
@@ -83,7 +91,7 @@ class EditPostUpdateView(OnlyAuthorMixin, UpdateView):
     def get_success_url(self):
         return reverse(
             'blog:post_detail',
-            kwargs={'pk': self.kwargs['pk']}
+            kwargs={'pk': self.kwargs['post_id']}
         )
 
 
@@ -94,7 +102,7 @@ class DeletePostDeleteView(OnlyAuthorMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        post = get_object_or_404(Post, pk=self.kwargs['pk'])
+        post = get_object_or_404(Post, pk=self.kwargs['post_id'])
         context['form'] = DeleteForm(instance=post)
         return context
 
@@ -200,9 +208,10 @@ def edit_comment(request, post_id, id):
 @login_required
 def delete_comment(request, post_id, comment_id):
     comment = get_object_or_404(Comment, pk=comment_id)
-    form = CommentForm(instance=comment)
-    context = {'form': form, 'comment': comment}
+    context = {'comment': comment}
     if request.method == 'POST':
+        if request.user != comment.author and not request.user.is_staff:
+            return render(request, 'pages/403.html')
         comment.delete()
         return redirect('blog:post_detail', pk=post_id)
     return render(request, 'blog/comment.html', context)
