@@ -64,7 +64,7 @@ TEMPLATES_DIR = BASE_DIR / 'templates'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [TEMPLATES_DIR],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -143,7 +143,7 @@ CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
 
 INTERNAL_IPS = [
     '127.0.0.1',
-] 
+]
 
 LOGIN_REDIRECT_URL = 'blog:index'
 

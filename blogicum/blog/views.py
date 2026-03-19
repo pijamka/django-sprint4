@@ -11,10 +11,11 @@ from django.urls import reverse_lazy, reverse
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.http import Http404
 
 from blog.models import Post, Category, Comment
 
-from .forms import CommentForm
+from .forms import CommentForm, DeleteForm
 
 User = get_user_model()
 
@@ -34,8 +35,9 @@ class IndexListView(ListView):
     template_name = 'blog/index.html'
 
     def get_queryset(self):
-        # Сортировка от новых к старым
-        return filter_posts(Post.objects).order_by('-pub_date')
+        return filter_posts(Post.objects).order_by(
+            '-pub_date'
+        ).annotate(comment_count=Count('comment'))
 
 
 class PostDetailDetailView(DetailView):
@@ -43,12 +45,18 @@ class PostDetailDetailView(DetailView):
     template_name = 'blog/detail.html'
     pk_url_kwarg = 'post_id'
 
+    def get_object(self, queryset=None):
+        post = super().get_object(queryset)
+        if not post.is_published and post.author != self.request.user:
+            raise Http404("Этот пост не опубликован или недоступен.")
+        return post
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
         context['comments'] = self.object.comment.select_related('author')
         return context
-   
+
 
 class CreatePostCreateView(LoginRequiredMixin, CreateView):
     model = Post
@@ -88,21 +96,48 @@ class EditPostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'
 
+    def get_login_url(self):
+        return reverse(
+            'blog:post_detail',
+            kwargs={'post_id': self.kwargs['post_id']}
+        )
+
     def get_success_url(self):
         return reverse(
             'blog:post_detail',
             kwargs={'post_id': self.kwargs['post_id']}
         )
 
+    def handle_no_permission(self):
+        return redirect(self.get_login_url())
+
     def test_func(self):
         post = self.get_object()
         return self.request.user == post.author
 
 
-class DeletePostDeleteView(DeleteView):
+class DeletePostDeleteView(
+    LoginRequiredMixin,
+    UserPassesTestMixin,
+    DeleteView
+):
     model = Post
     template_name = 'blog/create.html'
-    success_url = 'blog/index.html'
+    success_url = reverse_lazy('blog:index')
+    pk_url_kwarg = 'post_id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        post = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        context['form'] = DeleteForm(instance=post)
+        return context
+
+    def test_func(self):
+        post = self.get_object()
+        return (
+            self.request.user == post.author
+            or self.request.user.is_superuser
+        )
 
 
 class CategoryPostsListView(ListView):
@@ -113,7 +148,9 @@ class CategoryPostsListView(ListView):
     def get_queryset(self):
         return filter_posts(Post.objects).filter(
             category__slug=self.kwargs.get('category_slug'),
-        )
+        ).order_by(
+            '-pub_date'
+        ).annotate(comment_count=Count('comment'))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -149,7 +186,11 @@ class UserProfileDetailView(DetailView):
         return get_object_or_404(self.model, username=self.kwargs['username'])
 
 
-class UserEditProfileUpdateView(UserPassesTestMixin, UpdateView):
+class UserEditProfileUpdateView(
+    LoginRequiredMixin,
+    UserPassesTestMixin,
+    UpdateView
+):
     model = User
     fields = ('username', 'email', 'first_name', 'last_name')
     template_name = 'blog/user.html'
@@ -157,7 +198,7 @@ class UserEditProfileUpdateView(UserPassesTestMixin, UpdateView):
 
     def get_object(self):
         return self.request.user
-    
+
     def test_func(self):
         object = self.get_object()
         return object == self.request.user
