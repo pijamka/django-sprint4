@@ -149,4 +149,4 @@ dmypy.json
 media/
 templates_reference/
 sent_emails/
-
+blogicum/static_dev/

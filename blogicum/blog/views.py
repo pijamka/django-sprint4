@@ -1,23 +1,22 @@
 from datetime import datetime
 
-
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.paginator import Paginator
+from django.db.models import Count
+from django.http import Http404
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse_lazy, reverse
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, UpdateView
 )
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
-from django.urls import reverse_lazy, reverse
-from django.core.paginator import Paginator
-from django.db.models import Count
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.http import Http404
 
 from blog.models import Post, Category, Comment
-
 from .forms import CommentForm, DeleteForm
 
 User = get_user_model()
+AMOUNT_OF_PAGINATION = 10
 
 
 def filter_posts(posts):
@@ -30,8 +29,7 @@ def filter_posts(posts):
 
 class IndexListView(ListView):
     model = Post
-    ordering = 'id'
-    paginate_by = 10
+    paginate_by = AMOUNT_OF_PAGINATION
     template_name = 'blog/index.html'
 
     def get_queryset(self):
@@ -142,7 +140,7 @@ class DeletePostDeleteView(
 
 class CategoryPostsListView(ListView):
     model = Post
-    paginate_by = 10
+    paginate_by = AMOUNT_OF_PAGINATION
     template_name = 'blog/category.html'
 
     def get_queryset(self):
