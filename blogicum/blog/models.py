@@ -25,8 +25,7 @@ class PublishedModel(models.Model):
 class Category(PublishedModel):
     title = models.CharField(
         max_length=256,
-        verbose_name='Заголовок',
-        blank=False
+        verbose_name='Заголовок'
     )
     description = models.TextField(verbose_name='Описание', blank=False)
     slug = slug = models.SlugField(
@@ -38,11 +37,12 @@ class Category(PublishedModel):
     )
 
     class Meta:
-        verbose_name = 'категория'
+        verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
+        ordering = ['title']
 
     def __str__(self):
-        return ' '.join(self.title.split()[:3])
+        return f'{self.title[:30]}...'
 
 
 class Location(PublishedModel):
@@ -55,16 +55,16 @@ class Location(PublishedModel):
     class Meta:
         verbose_name = 'местоположение'
         verbose_name_plural = 'Местоположения'
+        ordering = ['name']
 
     def __str__(self):
-        return ' '.join(self.name.split()[:3])
+        return f'{self.name[:30]}...'
 
 
 class Post(PublishedModel):
     title = models.CharField(
         max_length=256,
         verbose_name='Заголовок',
-        blank=False
     )
     text = models.TextField(verbose_name='Текст', blank=False)
     pub_date = models.DateTimeField(
@@ -77,48 +77,54 @@ class Post(PublishedModel):
         User,
         on_delete=models.CASCADE,
         verbose_name='Автор публикации',
-        related_name='posts',
-        blank=False
+        related_name='posts'
     )
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         null=True,
         verbose_name='Местоположение',
-        related_name='posts'
+        related_name='location_posts'
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
         verbose_name='Категория',
-        blank=False,
-        related_name='posts'
+        related_name='category_posts'
     )
     image = models.ImageField(
-        'фото',
+        'Изображение',
         upload_to='post_images',
         blank=True
     )
 
     class Meta:
-        verbose_name = 'публикация'
+        verbose_name = 'Публикация'
         verbose_name_plural = 'Публикации'
         ordering = ('-pub_date',)
 
     def __str__(self):
-        return ' '.join(self.title.split()[:3])
+        return f'{self.title[:30]}...'
 
 
 class Comment(models.Model):
-    text = models.TextField('Текст Комментария')
+    text = models.TextField('Текст')
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comment',
+        verbose_name='Пост',
+        related_name='comments',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор комментария',
+        related_name='comments'
+    )
 
     class Meta:
         ordering = ('created_at',)
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'

@@ -12,7 +12,7 @@ urlpatterns = [
     ),
     path(
         'posts/create/',
-        views.CreatePostCreateView.as_view(),
+        views.PostCreateView.as_view(),
         name='create_post'
     ),
     path(
@@ -22,7 +22,7 @@ urlpatterns = [
     ),
     path(
         'posts/<int:post_id>/delete/',
-        views.DeletePostDeleteView.as_view(),
+        views.PostDeleteView.as_view(),
         name='delete_post'
     ),
     path(
