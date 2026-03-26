@@ -17,7 +17,7 @@ urlpatterns = [
     ),
     path(
         'posts/<int:post_id>/edit/',
-        views.EditPostUpdateView.as_view(),
+        views.PostUpdateView.as_view(),
         name='edit_post'
     ),
     path(
@@ -45,7 +45,7 @@ urlpatterns = [
         views.CategoryPostsListView.as_view(), name='category_posts'
     ),
     path(
-        'profile/edit/',
+        'profile/me/edit/',
         views.UserEditProfileUpdateView.as_view(),
         name='edit_profile'
     ),

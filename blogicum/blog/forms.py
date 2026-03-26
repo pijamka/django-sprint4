@@ -20,15 +20,7 @@ class DeletionForm(forms.ModelForm):
 class PostForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = (
-            'title',
-            'text',
-            'pub_date',
-            'is_published',
-            'category',
-            'location',
-            'image'
-        )
+        exclude = ('author',)
 
 
 class ProfileForm(forms.ModelForm):
