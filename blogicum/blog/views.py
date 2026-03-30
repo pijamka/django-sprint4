@@ -18,25 +18,22 @@ POSTS_ON_THE_PAGE = 10
 
 def get_posts(
     posts=Post.objects,
-    is_published=True,
-    category__is_published=True,
-    pub_date__lt=True,
+    need_filtration=True,
     with_select_related=True,
-    with_comments_count=True,
-    with_ordering=True
+    with_comments_count=True
 ):
     if with_select_related:
         posts = posts.select_related('category', 'location', 'author')
-    if is_published:
-        posts = posts.filter(is_published=True)
-    if category__is_published:
-        posts = posts.filter(category__is_published=True)
-    if pub_date__lt:
-        posts = posts.filter(pub_date__lt=datetime.now())
+    if need_filtration:
+        posts = posts.filter(
+            is_published=True,
+            category__is_published=True,
+            pub_date__lt=datetime.now()
+        )
     if with_comments_count:
-        posts = posts.annotate(comment_count=Count('comments'))
-    if with_ordering:
-        posts = posts.order_by(*posts.model._meta.ordering)
+        posts = posts.annotate(
+            comment_count=Count('comments')
+        ).order_by(*posts.model._meta.ordering)
     return posts
 
 
@@ -64,7 +61,10 @@ class PostDetailDetailView(DetailView):
         if self.request.user == post.author:
             return post
         return super().get_object(
-            get_posts()
+            get_posts(
+                with_select_related=False,
+                with_comments_count=False
+            )
         )
 
     def get_context_data(self, **kwargs):
@@ -91,7 +91,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         )
 
 
-class BaseClass(LoginRequiredMixin, UserPassesTestMixin):
+class AuthorOnlyBaseClass(LoginRequiredMixin, UserPassesTestMixin):
     model = Post
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'
@@ -100,7 +100,7 @@ class BaseClass(LoginRequiredMixin, UserPassesTestMixin):
         return self.request.user == self.get_object().author
 
 
-class PostUpdateView(BaseClass, UpdateView):
+class PostUpdateView(AuthorOnlyBaseClass, UpdateView):
     form_class = PostForm
 
     def get_success_url(self):
@@ -115,7 +115,7 @@ class PostUpdateView(BaseClass, UpdateView):
         )
 
 
-class PostDeleteView(BaseClass, DeleteView):
+class PostDeleteView(AuthorOnlyBaseClass, DeleteView):
     success_url = reverse_lazy('blog:index')
 
     def get_context_data(self, **kwargs):
@@ -155,16 +155,27 @@ class UserProfileDetailView(DetailView):
     slug_url_kwarg = 'username'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['page_obj'] = get_paginate(
-            get_posts(
-                self.object.posts,
-                is_published=False,
-                category__is_published=False,
-                pub_date__lt=False),
-            self.request
+        if self.request.user == self.object:
+            return super().get_context_data(
+                **kwargs,
+                page_obj=get_paginate(
+                    get_posts(
+                        self.object.posts,
+                        need_filtration=False
+                    ),
+                    self.request
+                )
+            )
+        return super().get_context_data(
+            **kwargs,
+            page_obj=get_paginate(
+                get_posts(
+                    self.object.posts,
+                    need_filtration=True
+                ),
+                self.request
+            )
         )
-        return context
 
 
 class UserEditProfileUpdateView(
@@ -207,8 +218,10 @@ def edit_comment(request, post_id, comment_id):
     return render(
         request,
         'blog/comment.html',
-        {'form': form,
-            'comment': comment}
+        {
+            'form': form,
+            'comment': comment
+        }
     )
 
 
