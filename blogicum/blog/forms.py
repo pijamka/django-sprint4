@@ -10,13 +10,6 @@ class CommentForm(forms.ModelForm):
         fields = ('text',)
 
 
-class DeletionForm(forms.ModelForm):
-
-    class Meta:
-        model = Post
-        fields = ('__all__')
-
-
 class PostForm(forms.ModelForm):
     class Meta:
         model = Post
