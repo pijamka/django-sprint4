@@ -155,23 +155,12 @@ class UserProfileDetailView(DetailView):
     slug_url_kwarg = 'username'
 
     def get_context_data(self, **kwargs):
-        if self.request.user == self.object:
-            return super().get_context_data(
-                **kwargs,
-                page_obj=get_paginate(
-                    get_posts(
-                        self.object.posts,
-                        need_filtration=False
-                    ),
-                    self.request
-                )
-            )
         return super().get_context_data(
             **kwargs,
             page_obj=get_paginate(
                 get_posts(
                     self.object.posts,
-                    need_filtration=True
+                    need_filtration=self.request.user != self.object
                 ),
                 self.request
             )
@@ -215,14 +204,10 @@ def edit_comment(request, post_id, comment_id):
     if form.is_valid():
         form.save()
         return redirect('blog:post_detail', post_id)
-    return render(
-        request,
-        'blog/comment.html',
-        {
-            'form': form,
-            'comment': comment
-        }
-    )
+    return render(request, 'blog/comment.html', {
+        'form': form,
+        'comment': comment,
+    })
 
 
 @login_required
